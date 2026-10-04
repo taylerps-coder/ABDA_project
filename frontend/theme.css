@@ -803,6 +803,70 @@ body {
 /* ==========================================================================
    3. Restaurants Listing: Toolbar, Table, and Cards
    ========================================================================== */
+.result-count-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.total-atlas-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--brand-sprout-soft);
+  color: #0d3829;
+  font-family: var(--font-mono);
+  font-size: 0.775rem;
+  font-weight: 800;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(187, 244, 81, 0.4);
+  box-shadow: 0 2px 6px rgba(187, 244, 81, 0.2);
+}
+
+[data-theme="dark"] .total-atlas-badge {
+  background: rgba(187, 244, 81, 0.15);
+  color: var(--brand-sprout);
+  border-color: rgba(187, 244, 81, 0.3);
+}
+
+.section-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.page-size-selector select {
+  font-family: var(--font-main);
+  background: var(--bg-surface-elevated);
+  border: 1.5px solid rgba(17, 66, 50, 0.15);
+  border-radius: 9999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: var(--brand-forest);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .page-size-selector select {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text-primary);
+}
+
 .table-toolbar {
   display: flex;
   align-items: center;
@@ -1070,6 +1134,45 @@ body {
   justify-content: space-between;
   padding-top: 0.85rem;
   border-top: 1px solid rgba(17, 66, 50, 0.08);
+}
+
+/* Pagination & Stream Controls */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(17, 66, 50, 0.08);
+}
+
+[data-theme="dark"] .pagination-container {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.page-display {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0 0.5rem;
+}
+
+.page-display strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
 }
 
 /* ==========================================================================

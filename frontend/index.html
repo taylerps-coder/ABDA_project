@@ -187,9 +187,22 @@
       <div class="section-header">
         <div>
           <h2 class="section-title">Restaurants</h2>
-          <span id="resultCount" class="result-count">Loading restaurants…</span>
+          <div class="result-count-group">
+            <span id="resultCount" class="result-count">Loading restaurants…</span>
+            <span class="total-atlas-badge" id="totalAtlasBadge">📁 21,002 in Atlas</span>
+          </div>
         </div>
         <div class="section-toolbar">
+          <div class="page-size-selector">
+            <label for="pageSizeSelect">Per page:</label>
+            <select id="pageSizeSelect">
+              <option value="30" selected>30</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="250">250</option>
+              <option value="500">500</option>
+            </select>
+          </div>
           <div class="view-toggle" id="viewToggle">
             <button class="view-btn active" data-view="table" title="Table View">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="3" rx="0.5" fill="currentColor" opacity="0.4"/><rect x="1" y="6" width="14" height="3" rx="0.5" fill="currentColor" opacity="0.6"/><rect x="1" y="11" width="14" height="3" rx="0.5" fill="currentColor"/></svg>
@@ -198,8 +211,8 @@
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/><rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.4"/><rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/></svg>
             </button>
           </div>
-          <button class="btn btn-outline btn-sm" id="btnExportCSV" title="Export as CSV">📥 Export CSV</button>
-          <button class="btn btn-outline" id="btnRefresh">🔄 Refresh</button>
+          <button class="btn btn-secondary btn-sm" id="btnExportCSV" title="Export as CSV">📥 Export CSV</button>
+          <button class="btn btn-secondary btn-sm" id="btnRefresh">🔄 Refresh</button>
         </div>
       </div>
 
@@ -230,6 +243,23 @@
 
       <!-- Card View (hidden by default) -->
       <div class="card-grid hidden" id="cardView"></div>
+
+      <!-- Pagination & Stream Controls -->
+      <div class="pagination-container" id="paginationContainer">
+        <div class="pagination-info" id="paginationInfo">
+          Showing 1–30 of 21,002 restaurants
+        </div>
+        <div class="pagination-buttons">
+          <button class="btn btn-secondary btn-sm" id="btnFirstPage" title="First Page">⏮ First</button>
+          <button class="btn btn-secondary btn-sm" id="btnPrevPage" title="Previous Page">◀ Prev</button>
+          <span class="page-display">
+            Page <strong id="currentPageText">1</strong> of <strong id="totalPagesText">701</strong>
+          </span>
+          <button class="btn btn-secondary btn-sm" id="btnNextPage" title="Next Page">Next ▶</button>
+          <button class="btn btn-secondary btn-sm" id="btnLastPage" title="Last Page">Last ⏭</button>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnLoadMore">⚡ Load More (+50)</button>
+      </div>
     </section>
 
     <!-- ADD RESTAURANT SECTION (CRUD CREATE) -->

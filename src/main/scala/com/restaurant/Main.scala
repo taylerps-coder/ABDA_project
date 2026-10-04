@@ -80,10 +80,12 @@ object Main extends cask.MainRoutes {
 
   private def safeStr(s: String): String = if (s == null) "" else s
 
-  // READ: List all restaurants
+  // READ: List all restaurants with pagination
   @cask.get("/api/restaurants")
-  def getRestaurants(limit: Int = 30): cask.Response[String] = {
-    val list = service.getAll(limit)
+  def getRestaurants(limit: Int = 30, skip: Int = 0, page: Int = 1): cask.Response[String] = {
+    val actualSkip = if (skip > 0) skip else math.max(0, (page - 1) * limit)
+    val list = service.getAll(limit, actualSkip)
+    val totalCount = service.countAll()
     val jsonArray = ujson.Arr.from(list.map { r =>
       ujson.Obj(
         "id" -> safeStr(r.id),
@@ -96,7 +98,15 @@ object Main extends cask.MainRoutes {
         "score" -> r.score
       )
     })
-    cask.Response(jsonArray.render(), headers = Seq("Content-Type" -> "application/json"))
+    val response = ujson.Obj(
+      "restaurants" -> jsonArray,
+      "total" -> totalCount,
+      "limit" -> limit,
+      "skip" -> actualSkip,
+      "page" -> (actualSkip / math.max(1, limit) + 1),
+      "pages" -> math.ceil(totalCount.toDouble / math.max(1, limit)).toLong
+    )
+    cask.Response(response.render(), headers = Seq("Content-Type" -> "application/json", "Cache-Control" -> "no-cache"))
   }
 
   // SEARCH AND FILTER: Restaurant Name, Cuisine, Borough, ZIP, Score
@@ -106,14 +116,20 @@ object Main extends cask.MainRoutes {
     cuisine: String = "",
     borough: String = "",
     zipcode: String = "",
-    minScore: Double = 0.0
+    minScore: Double = 0.0,
+    limit: Int = 50,
+    skip: Int = 0,
+    page: Int = 1
   ): cask.Response[String] = {
+    val actualSkip = if (skip > 0) skip else math.max(0, (page - 1) * limit)
     val list = service.search(
       name = if (name.trim.nonEmpty) Some(name.trim) else None,
       cuisine = if (cuisine.trim.nonEmpty) Some(cuisine.trim) else None,
       borough = if (borough.trim.nonEmpty) Some(borough.trim) else None,
       zipcode = if (zipcode.trim.nonEmpty) Some(zipcode.trim) else None,
-      minScore = if (minScore > 0) Some(minScore) else None
+      minScore = if (minScore > 0) Some(minScore) else None,
+      limit = limit,
+      skip = actualSkip
     )
 
     val jsonArray = ujson.Arr.from(list.map { r =>
@@ -123,10 +139,19 @@ object Main extends cask.MainRoutes {
         "cuisine" -> safeStr(r.cuisine),
         "borough" -> safeStr(r.borough),
         "zipcode" -> safeStr(r.address.zipcode),
+        "building" -> safeStr(r.address.building),
+        "street" -> safeStr(r.address.street),
         "score" -> r.score
       )
     })
-    cask.Response(jsonArray.render(), headers = Seq("Content-Type" -> "application/json"))
+    val response = ujson.Obj(
+      "restaurants" -> jsonArray,
+      "total" -> list.size,
+      "limit" -> limit,
+      "skip" -> actualSkip,
+      "page" -> (actualSkip / math.max(1, limit) + 1)
+    )
+    cask.Response(response.render(), headers = Seq("Content-Type" -> "application/json", "Cache-Control" -> "no-cache"))
   }
 
   // CREATE: Add new restaurant

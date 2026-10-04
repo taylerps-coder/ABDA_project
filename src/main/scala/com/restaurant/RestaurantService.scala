@@ -113,14 +113,21 @@ class RestaurantService(val validator: DataValidator[Restaurant] = new Restauran
   // ==========================================================================
   // 8. CRUD: READ (Get all / recent restaurants)
   // ==========================================================================
-  def getAll(limit: Int = 30): Seq[Restaurant] = {
+  def getAll(limit: Int = 30, skip: Int = 0): Seq[Restaurant] = {
     MongoDB.getCollection match {
       case Some(coll) =>
-        val docs = MongoDB.sync(coll.find().limit(limit))
+        val docs = MongoDB.sync(coll.find().skip(skip).limit(limit))
         // 6. Collection map: transform documents into Restaurant instances
         docs.map(docToRestaurant)
       case None =>
         Seq.empty
+    }
+  }
+
+  def countAll(): Long = {
+    MongoDB.getCollection match {
+      case Some(coll) => MongoDB.syncOne(coll.countDocuments()).getOrElse(0L)
+      case None => 0L
     }
   }
 
@@ -141,7 +148,8 @@ class RestaurantService(val validator: DataValidator[Restaurant] = new Restauran
     borough: Option[String],
     zipcode: Option[String],
     minScore: Option[Double],
-    limit: Int = 40
+    limit: Int = 50,
+    skip: Int = 0
   ): Seq[Restaurant] = {
     MongoDB.getCollection match {
       case Some(coll) =>
@@ -173,7 +181,7 @@ class RestaurantService(val validator: DataValidator[Restaurant] = new Restauran
         }
 
         val combinedFilter = if (filters.isEmpty) Document() else and(filters: _*)
-        val docs = MongoDB.sync(coll.find(combinedFilter).limit(limit))
+        val docs = MongoDB.sync(coll.find(combinedFilter).skip(skip).limit(limit))
         val restaurants = docs.map(docToRestaurant)
 
         // 7. Filter: in-memory refinement for minimum score if specified

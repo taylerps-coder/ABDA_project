@@ -9,6 +9,11 @@ let lastCuisineData = null;
 let lastBoroughData = null;
 let currentTheme = localStorage.getItem("abda_theme") || "light";
 let autoRefreshTimer = null;
+let currentPage = 1;
+let pageSize = 30;
+let totalRestaurantsCount = 21002;
+let totalPages = Math.ceil(totalRestaurantsCount / pageSize);
+let currentSearchParams = "";
 
 // DOM Elements
 const connectionBadge = document.getElementById("connectionStatus");
@@ -131,87 +136,166 @@ async function loadDashboard() {
     animateValue(statCuisines, Number(data.totalCuisines), 700);
     animateValue(statBoroughs, Number(data.totalBoroughs), 600);
     animateValue(statAvgScore, Number(data.averageScore), 900, true);
+
+    if (data.totalRestaurants) {
+      totalRestaurantsCount = Number(data.totalRestaurants);
+      totalPages = Math.max(1, Math.ceil(totalRestaurantsCount / pageSize));
+      const totalAtlasBadge = document.getElementById("totalAtlasBadge");
+      if (totalAtlasBadge) {
+        totalAtlasBadge.textContent = `📁 ${totalRestaurantsCount.toLocaleString()} in Atlas`;
+      }
+      updatePaginationUI();
+    }
   } catch (err) {
     console.error("Failed to load dashboard:", err);
   }
 }
 
 // ============================================================================
-// 3. Restaurants CRUD - READ & SEARCH
+// 3. Restaurants CRUD - READ & SEARCH (With Dynamic Pagination & Streaming)
 // ============================================================================
-async function loadRestaurants(queryParams = "") {
-  restaurantsTableBody.innerHTML = `<tr><td colspan="6" class="text-center">Loading restaurants from MongoDB Atlas…</td></tr>`;
-  if (cardView) cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-secondary);">Loading restaurants from MongoDB Atlas…</div>`;
-  resultCount.textContent = "Loading…";
+async function loadRestaurants(queryParams = "", page = 1, append = false) {
+  if (queryParams !== undefined && queryParams !== null && queryParams !== currentSearchParams && !append) {
+    currentSearchParams = queryParams;
+    currentPage = 1;
+  } else {
+    currentPage = page;
+  }
+
+  if (!append) {
+    restaurantsTableBody.innerHTML = `<tr><td colspan="6" class="text-center">Loading restaurants from MongoDB Atlas…</td></tr>`;
+    if (cardView) cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-secondary);">Loading restaurants from MongoDB Atlas…</div>`;
+    resultCount.textContent = "Loading…";
+  }
 
   try {
-    const url = queryParams ? `/api/restaurants/search?${queryParams}` : "/api/restaurants?limit=30";
+    const skip = append ? currentRestaurants.length : (currentPage - 1) * pageSize;
+    let url = "";
+    if (currentSearchParams) {
+      url = `/api/restaurants/search?${currentSearchParams}&limit=${pageSize}&skip=${skip}&page=${currentPage}`;
+    } else {
+      url = `/api/restaurants?limit=${pageSize}&skip=${skip}&page=${currentPage}`;
+    }
+
     const res = await fetch(url);
     const data = await res.json();
 
-    currentRestaurants = data;
-    renderRestaurantsTable(data);
+    const list = Array.isArray(data) ? data : (data.restaurants || []);
+    if (data && data.total !== undefined && !currentSearchParams) {
+      totalRestaurantsCount = data.total;
+    }
+    totalPages = Math.max(1, Math.ceil(totalRestaurantsCount / pageSize));
+
+    if (append) {
+      currentRestaurants = currentRestaurants.concat(list);
+    } else {
+      currentRestaurants = list;
+    }
+
+    renderRestaurantsTable(currentRestaurants, append);
+    updatePaginationUI();
   } catch (err) {
-    restaurantsTableBody.innerHTML = `<tr><td colspan="6" class="text-center" style="color: var(--accent-rose);">Failed to load restaurants: ${err.message}</td></tr>`;
-    if (cardView) cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--accent-rose);">Failed to load restaurants: ${err.message}</div>`;
-    resultCount.textContent = "0 restaurants";
+    if (!append) {
+      restaurantsTableBody.innerHTML = `<tr><td colspan="6" class="text-center" style="color: var(--color-danger);">Failed to load restaurants: ${err.message}</td></tr>`;
+      if (cardView) cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--color-danger);">Failed to load restaurants: ${err.message}</div>`;
+      resultCount.textContent = "0 restaurants";
+    }
   }
 }
 
-function renderRestaurantsTable(list) {
-  resultCount.textContent = `Showing ${list.length} restaurant${list.length === 1 ? "" : "s"}`;
+function renderRestaurantsTable(list, append = false) {
+  const startNum = list.length === 0 ? 0 : (append ? 1 : (currentPage - 1) * pageSize + 1);
+  const endNum = append ? list.length : Math.min((currentPage - 1) * pageSize + list.length, totalRestaurantsCount);
+
+  if (currentSearchParams) {
+    resultCount.textContent = `Showing ${list.length} search results`;
+  } else {
+    resultCount.textContent = `Showing ${startNum.toLocaleString()}–${endNum.toLocaleString()} of ${totalRestaurantsCount.toLocaleString()} restaurants`;
+  }
+
+  const totalAtlasBadge = document.getElementById("totalAtlasBadge");
+  if (totalAtlasBadge) {
+    totalAtlasBadge.textContent = `📁 ${totalRestaurantsCount.toLocaleString()} in Atlas`;
+  }
 
   if (!list || list.length === 0) {
     restaurantsTableBody.innerHTML = `<tr><td colspan="6" class="text-center">No restaurants found matching your criteria.</td></tr>`;
     if (cardView) {
-      cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-secondary); background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-medium);">No restaurants found matching your criteria.</div>`;
+      cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-secondary);">No restaurants found matching your criteria.</div>`;
     }
     return;
   }
 
-  // Render Table View Rows
-  restaurantsTableBody.innerHTML = list.map((r, index) => `
-    <tr style="animation: fadeInUp 0.3s ease-out ${index * 0.02}s both;">
+  const rowsHtml = list.map((r, index) => `
+    <tr style="animation: fadeInUp 0.3s ease-out ${Math.min(index * 0.015, 0.35)}s both;">
       <td><strong>${escapeHtml(r.name)}</strong></td>
-      <td><span class="badge badge-cuisine">${escapeHtml(r.cuisine)}</span></td>
-      <td><span class="badge badge-borough">${escapeHtml(r.borough)}</span></td>
+      <td><span class="cuisine-pill">${escapeHtml(r.cuisine)}</span></td>
+      <td><span class="borough-pill ${escapeHtml((r.borough || '').replace(' ', '-'))}">${escapeHtml(r.borough)}</span></td>
       <td>${escapeHtml(r.zipcode || "N/A")}</td>
       <td><span class="score-pill">${r.score ? r.score.toFixed(1) : "0.0"}</span></td>
       <td class="text-right">
-        <div class="actions-cell">
-          <button class="btn btn-secondary btn-sm" onclick="openEditModal('${r.id}')">✏️ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteRestaurant('${r.id}', '${escapeQuotes(r.name)}')">🗑️ Delete</button>
+        <div class="action-buttons">
+          <button class="btn-edit" onclick="openEditModal('${r.id}')">✏️ Edit</button>
+          <button class="btn-delete" onclick="deleteRestaurant('${r.id}', '${escapeQuotes(r.name)}')">🗑️ Delete</button>
         </div>
       </td>
     </tr>
   `).join("");
 
-  // Render Card Grid View
+  restaurantsTableBody.innerHTML = rowsHtml;
+
   if (cardView) {
     cardView.innerHTML = list.map((r, index) => `
-      <div class="restaurant-card" style="animation: fadeInUp 0.3s ease-out ${index * 0.02}s both;">
-        <div class="restaurant-card-name">${escapeHtml(r.name)}</div>
-        <div class="restaurant-card-meta">
-          <span class="badge badge-cuisine">${escapeHtml(r.cuisine)}</span>
-          <span class="badge badge-borough">${escapeHtml(r.borough)}</span>
+      <div class="restaurant-card" style="animation: fadeInUp 0.3s ease-out ${Math.min(index * 0.015, 0.35)}s both;">
+        <div class="restaurant-card-header">
+          <div class="restaurant-card-name">${escapeHtml(r.name)}</div>
           <span class="score-pill">⭐ ${r.score ? r.score.toFixed(1) : "0.0"}</span>
         </div>
-        <div class="restaurant-card-detail">
-          <span class="label">ZIP:</span>
-          <span>${escapeHtml(r.zipcode || "N/A")}</span>
+        <div class="restaurant-card-tags">
+          <span class="cuisine-pill">${escapeHtml(r.cuisine)}</span>
+          <span class="borough-pill ${escapeHtml((r.borough || '').replace(' ', '-'))}">${escapeHtml(r.borough)}</span>
         </div>
-        ${(r.street || r.building) ? `
-        <div class="restaurant-card-detail">
-          <span class="label">Addr:</span>
-          <span>${escapeHtml((r.building ? r.building + ' ' : '') + (r.street || ''))}</span>
-        </div>` : ''}
-        <div class="restaurant-card-actions">
-          <button class="btn btn-secondary btn-sm" onclick="openEditModal('${r.id}')">✏️ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteRestaurant('${r.id}', '${escapeQuotes(r.name)}')">🗑️ Delete</button>
+        <div class="restaurant-card-address">
+          <span>📍 ${escapeHtml((r.building ? r.building + ' ' : '') + (r.street ? r.street + ', ' : '') + (r.zipcode || ''))}</span>
+        </div>
+        <div class="restaurant-card-footer">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Atlas Record</span>
+          <div class="action-buttons">
+            <button class="btn-edit" onclick="openEditModal('${r.id}')">✏️ Edit</button>
+            <button class="btn-delete" onclick="deleteRestaurant('${r.id}', '${escapeQuotes(r.name)}')">🗑️ Delete</button>
+          </div>
         </div>
       </div>
     `).join("");
   }
+}
+
+function updatePaginationUI() {
+  const paginationInfo = document.getElementById("paginationInfo");
+  const currentPageText = document.getElementById("currentPageText");
+  const totalPagesText = document.getElementById("totalPagesText");
+  const btnFirstPage = document.getElementById("btnFirstPage");
+  const btnPrevPage = document.getElementById("btnPrevPage");
+  const btnNextPage = document.getElementById("btnNextPage");
+  const btnLastPage = document.getElementById("btnLastPage");
+
+  const startNum = currentRestaurants.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endNum = Math.min((currentPage - 1) * pageSize + currentRestaurants.length, totalRestaurantsCount);
+
+  if (paginationInfo) {
+    if (currentSearchParams) {
+      paginationInfo.textContent = `Showing ${currentRestaurants.length} matching search results`;
+    } else {
+      paginationInfo.textContent = `Showing ${startNum.toLocaleString()}–${endNum.toLocaleString()} of ${totalRestaurantsCount.toLocaleString()} restaurants`;
+    }
+  }
+  if (currentPageText) currentPageText.textContent = currentPage.toLocaleString();
+  if (totalPagesText) totalPagesText.textContent = totalPages.toLocaleString();
+
+  if (btnFirstPage) btnFirstPage.disabled = currentPage <= 1;
+  if (btnPrevPage) btnPrevPage.disabled = currentPage <= 1;
+  if (btnNextPage) btnNextPage.disabled = currentPage >= totalPages;
+  if (btnLastPage) btnLastPage.disabled = currentPage >= totalPages;
 }
 
 // View Switcher (Table / Card)
@@ -326,10 +410,53 @@ btnRefresh.addEventListener("click", () => {
   }, 500);
 
   searchForm.reset();
+  currentSearchParams = "";
+  currentPage = 1;
   loadRestaurants();
   loadDashboard();
   loadAnalytics();
   loadIndexes();
+});
+
+// Pagination & Page Size event handlers
+const pageSizeSelect = document.getElementById("pageSizeSelect");
+pageSizeSelect?.addEventListener("change", (e) => {
+  pageSize = parseInt(e.target.value) || 30;
+  currentPage = 1;
+  loadRestaurants(currentSearchParams, 1);
+});
+
+document.getElementById("btnFirstPage")?.addEventListener("click", () => {
+  if (currentPage > 1) {
+    loadRestaurants(currentSearchParams, 1);
+    document.getElementById("sectionRestaurants")?.scrollIntoView({ behavior: "smooth" });
+  }
+});
+
+document.getElementById("btnPrevPage")?.addEventListener("click", () => {
+  if (currentPage > 1) {
+    loadRestaurants(currentSearchParams, currentPage - 1);
+    document.getElementById("sectionRestaurants")?.scrollIntoView({ behavior: "smooth" });
+  }
+});
+
+document.getElementById("btnNextPage")?.addEventListener("click", () => {
+  if (currentPage < totalPages) {
+    loadRestaurants(currentSearchParams, currentPage + 1);
+    document.getElementById("sectionRestaurants")?.scrollIntoView({ behavior: "smooth" });
+  }
+});
+
+document.getElementById("btnLastPage")?.addEventListener("click", () => {
+  if (currentPage < totalPages) {
+    loadRestaurants(currentSearchParams, totalPages);
+    document.getElementById("sectionRestaurants")?.scrollIntoView({ behavior: "smooth" });
+  }
+});
+
+document.getElementById("btnLoadMore")?.addEventListener("click", () => {
+  const nextPg = Math.floor(currentRestaurants.length / pageSize) + 1;
+  loadRestaurants(currentSearchParams, nextPg, true);
 });
 
 // ============================================================================
