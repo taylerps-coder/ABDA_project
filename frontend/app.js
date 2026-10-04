@@ -5,6 +5,10 @@
 
 // Global cache for current restaurants on screen
 let currentRestaurants = [];
+let lastCuisineData = null;
+let lastBoroughData = null;
+let currentTheme = localStorage.getItem("abda_theme") || "dark";
+let autoRefreshTimer = null;
 
 // DOM Elements
 const connectionBadge = document.getElementById("connectionStatus");
@@ -460,18 +464,23 @@ window.deleteRestaurant = async function(id, name) {
 // ============================================================================
 // 7. Analytics (3 Aggregations)
 // ============================================================================
+// ============================================================================
+// 7. Analytics (3 Aggregations + Dynamic Neon Canvas Charts)
+// ============================================================================
 async function loadAnalytics() {
   // Aggregation 1: By Cuisine
   try {
     const res = await fetch("/api/analytics/cuisine?limit=10");
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {
+      lastCuisineData = data;
       tableCuisineBody.innerHTML = data.map((item, i) => `
         <tr style="animation: fadeInUp 0.3s ease-out ${i * 0.03}s both;">
           <td>${escapeHtml(item.cuisine)}</td>
           <td class="text-right"><strong>${Number(item.count).toLocaleString()}</strong></td>
         </tr>
       `).join("");
+      drawCuisineChart(data);
     } else {
       tableCuisineBody.innerHTML = `<tr><td colspan="2" class="text-center">No data available</td></tr>`;
     }
@@ -484,12 +493,14 @@ async function loadAnalytics() {
     const res = await fetch("/api/analytics/borough");
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {
+      lastBoroughData = data;
       tableBoroughBody.innerHTML = data.map((item, i) => `
         <tr style="animation: fadeInUp 0.3s ease-out ${i * 0.03}s both;">
           <td>${escapeHtml(item.borough)}</td>
           <td class="text-right"><strong>${Number(item.count).toLocaleString()}</strong></td>
         </tr>
       `).join("");
+      drawBoroughChart(data);
     } else {
       tableBoroughBody.innerHTML = `<tr><td colspan="2" class="text-center">No data available</td></tr>`;
     }
@@ -505,7 +516,7 @@ async function loadAnalytics() {
       tableAvgScoreBody.innerHTML = data.map((item, i) => `
         <tr style="animation: fadeInUp 0.3s ease-out ${i * 0.03}s both;">
           <td>${escapeHtml(item.cuisine)}</td>
-          <td><span class="score-pill">${Number(item.avgScore).toFixed(1)}</span></td>
+          <td><span class="score-pill">⭐ ${Number(item.avgScore).toFixed(1)}</span></td>
           <td class="text-right">${Number(item.count).toLocaleString()}</td>
         </tr>
       `).join("");
@@ -515,6 +526,162 @@ async function loadAnalytics() {
   } catch (err) {
     tableAvgScoreBody.innerHTML = `<tr><td colspan="3" class="text-center">Error loading</td></tr>`;
   }
+}
+
+// Glowing Neon Canvas Charts
+function drawCuisineChart(data) {
+  const canvas = document.getElementById("cuisineChart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth || 400;
+  const height = canvas.clientHeight || 250;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, width, height);
+
+  const topItems = data.slice(0, 5);
+  if (topItems.length === 0) return;
+  const maxVal = Math.max(...topItems.map(d => Number(d.count)), 1);
+
+  const startY = 18;
+  const barHeight = 24;
+  const gap = 16;
+  const labelWidth = 100;
+  const maxBarWidth = width - labelWidth - 70;
+
+  topItems.forEach((item, idx) => {
+    const y = startY + idx * (barHeight + gap);
+    const count = Number(item.count);
+    const barWidth = Math.max((count / maxVal) * maxBarWidth, 14);
+
+    // Label
+    ctx.fillStyle = document.documentElement.getAttribute("data-theme") === "light" ? "#334155" : "#cbd5e1";
+    ctx.font = "600 13px 'Plus Jakarta Sans', sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(item.cuisine, 8, y + barHeight / 2);
+
+    // Background track
+    ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
+    ctx.beginPath();
+    ctx.roundRect(labelWidth, y, maxBarWidth, barHeight, 6);
+    ctx.fill();
+
+    // Vibrant Aurora Gradient Bar
+    const grad = ctx.createLinearGradient(labelWidth, 0, labelWidth + barWidth, 0);
+    grad.addColorStop(0, "#ec4899");
+    grad.addColorStop(0.5, "#a855f7");
+    grad.addColorStop(1, "#06b6d4");
+
+    ctx.save();
+    ctx.shadowColor = "rgba(168, 85, 247, 0.5)";
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(labelWidth, y, barWidth, barHeight, 6);
+    ctx.fill();
+    ctx.restore();
+
+    // Count pill text
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 12px 'JetBrains Mono', monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(count.toLocaleString(), labelWidth + barWidth + 8, y + barHeight / 2);
+  });
+}
+
+function drawBoroughChart(data) {
+  const canvas = document.getElementById("boroughChart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth || 400;
+  const height = canvas.clientHeight || 250;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, width, height);
+
+  const colors = {
+    "Manhattan": "#ec4899",
+    "Brooklyn": "#06b6d4",
+    "Queens": "#10b981",
+    "Staten Island": "#f59e0b",
+    "Bronx": "#a855f7"
+  };
+
+  const total = data.reduce((acc, d) => acc + Number(d.count), 0) || 1;
+  const centerX = width * 0.32;
+  const centerY = height * 0.5;
+  const outerRadius = Math.min(centerX, centerY) - 15;
+  const innerRadius = outerRadius * 0.58;
+
+  let currentAngle = -Math.PI / 2;
+
+  data.forEach((item) => {
+    const count = Number(item.count);
+    const sliceAngle = (count / total) * (Math.PI * 2);
+    const color = colors[item.borough] || "#6366f1";
+
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
+    ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+
+    currentAngle += sliceAngle;
+  });
+
+  // Center text
+  ctx.fillStyle = document.documentElement.getAttribute("data-theme") === "light" ? "#0f172a" : "#ffffff";
+  ctx.font = "800 14px 'Outfit', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("NYC", centerX, centerY - 7);
+  ctx.font = "600 11px 'JetBrains Mono', monospace";
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillText(total.toLocaleString(), centerX, centerY + 9);
+
+  // Legend
+  const legendX = width * 0.62;
+  const startLegendY = 32;
+  const legendGap = 36;
+
+  data.forEach((item, idx) => {
+    const y = startLegendY + idx * legendGap;
+    const color = colors[item.borough] || "#6366f1";
+    const percent = Math.round((Number(item.count) / total) * 100);
+
+    // Indicator dot
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(legendX, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle = document.documentElement.getAttribute("data-theme") === "light" ? "#1e293b" : "#f1f5f9";
+    ctx.font = "700 12px 'Plus Jakarta Sans', sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(item.borough, legendX + 14, y - 4);
+
+    // Subtext
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "500 11px 'JetBrains Mono', monospace";
+    ctx.fillText(`${Number(item.count).toLocaleString()} (${percent}%)`, legendX + 14, y + 10);
+  });
 }
 
 // ============================================================================
@@ -587,9 +754,106 @@ function escapeQuotes(str) {
 }
 
 // ============================================================================
+// Theme Management & Interactive Enhancements
+// ============================================================================
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("abda_theme", theme);
+  const themeIcon = document.getElementById("themeIcon");
+  if (themeIcon) {
+    themeIcon.textContent = theme === "dark" ? "🌙" : "☀️";
+  }
+  // Re-draw charts with theme-adjusted colors if data is available
+  if (lastCuisineData) drawCuisineChart(lastCuisineData);
+  if (lastBoroughData) drawBoroughChart(lastBoroughData);
+}
+
+function toggleTheme() {
+  applyTheme(currentTheme === "dark" ? "light" : "dark");
+  showToast(`Switched to ${currentTheme === "dark" ? "Dark Nebula" : "Iridescent Light"} mode 🎨`, "success");
+}
+
+const btnThemeToggle = document.getElementById("btnThemeToggle");
+btnThemeToggle?.addEventListener("click", toggleTheme);
+
+// Responsive Chart Redraw
+window.addEventListener("resize", () => {
+  if (lastCuisineData) drawCuisineChart(lastCuisineData);
+  if (lastBoroughData) drawBoroughChart(lastBoroughData);
+});
+
+// Auto-Refresh Toggle
+const autoRefreshToggle = document.getElementById("autoRefreshToggle");
+autoRefreshToggle?.addEventListener("change", (e) => {
+  if (e.target.checked) {
+    showToast("Auto-refresh enabled (30s interval) ⚡", "success");
+    autoRefreshTimer = setInterval(() => {
+      loadDashboard();
+      loadRestaurants();
+      loadAnalytics();
+    }, 30000);
+  } else {
+    showToast("Auto-refresh disabled", "info");
+    if (autoRefreshTimer) {
+      clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
+  }
+});
+
+// Back to Top Button
+const scrollTopBtn = document.getElementById("scrollTopBtn");
+window.addEventListener("scroll", () => {
+  if (window.scrollY > 300) {
+    scrollTopBtn?.classList.remove("hidden");
+  } else {
+    scrollTopBtn?.classList.add("hidden");
+  }
+});
+
+scrollTopBtn?.addEventListener("click", () => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// Keyboard Shortcuts: 'T' for Theme, 'R' for Refresh
+window.addEventListener("keydown", (e) => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+  if (e.key === "t" || e.key === "T") {
+    e.preventDefault();
+    toggleTheme();
+  } else if (e.key === "r" || e.key === "R") {
+    e.preventDefault();
+    loadDashboard();
+    loadRestaurants();
+    loadAnalytics();
+    showToast("Data refreshed 🔄", "success");
+  }
+});
+
+// Smooth Active Tracking for Sidebar Nav
+const sidebarLinks = document.querySelectorAll(".sidebar-link[data-section]");
+window.addEventListener("scroll", () => {
+  const scrollPos = window.scrollY + 200;
+  sidebarLinks.forEach(link => {
+    const secId = link.getAttribute("data-section");
+    const sec = document.getElementById(secId);
+    if (sec) {
+      const top = sec.offsetTop;
+      const height = sec.offsetHeight;
+      if (scrollPos >= top && scrollPos < top + height) {
+        sidebarLinks.forEach(l => l.classList.remove("active"));
+        link.classList.add("active");
+      }
+    }
+  });
+});
+
+// ============================================================================
 // Initialization
 // ============================================================================
 document.addEventListener("DOMContentLoaded", () => {
+  applyTheme(currentTheme);
   setRestaurantView(currentView);
   checkHealth();
   loadDashboard();
