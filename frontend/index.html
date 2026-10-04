@@ -16,75 +16,6 @@
   <!-- Top Notification Toast -->
   <div id="toast" class="toast hidden"></div>
 
-  <!-- Command Palette (Ctrl+K) -->
-  <div id="commandPalette" class="command-palette hidden">
-    <div class="command-palette-overlay"></div>
-    <div class="command-palette-modal">
-      <div class="command-palette-header">
-        <span class="command-icon">🔍</span>
-        <input type="text" id="commandInput" placeholder="Search restaurants, navigate sections, or type a command…" autocomplete="off">
-        <kbd>ESC</kbd>
-      </div>
-      <div class="command-palette-results" id="commandResults">
-        <div class="command-group">
-          <div class="command-group-title">Quick Navigation</div>
-          <button class="command-item" data-action="nav" data-target="sectionDashboard">
-            <span class="command-item-icon">📊</span>
-            <span>Go to Dashboard</span>
-            <kbd>↵</kbd>
-          </button>
-          <button class="command-item" data-action="nav" data-target="sectionSearch">
-            <span class="command-item-icon">🔍</span>
-            <span>Go to Search & Filter</span>
-            <kbd>↵</kbd>
-          </button>
-          <button class="command-item" data-action="nav" data-target="sectionRestaurants">
-            <span class="command-item-icon">🏪</span>
-            <span>Go to Restaurants</span>
-            <kbd>↵</kbd>
-          </button>
-          <button class="command-item" data-action="nav" data-target="sectionAdd">
-            <span class="command-item-icon">➕</span>
-            <span>Add New Restaurant</span>
-            <kbd>↵</kbd>
-          </button>
-          <button class="command-item" data-action="nav" data-target="sectionAnalytics">
-            <span class="command-item-icon">📈</span>
-            <span>Go to Analytics</span>
-            <kbd>↵</kbd>
-          </button>
-          <button class="command-item" data-action="nav" data-target="sectionIndexes">
-            <span class="command-item-icon">⚡</span>
-            <span>Go to Indexes</span>
-            <kbd>↵</kbd>
-          </button>
-        </div>
-        <div class="command-group">
-          <div class="command-group-title">Actions</div>
-          <button class="command-item" data-action="refresh">
-            <span class="command-item-icon">🔄</span>
-            <span>Refresh All Data</span>
-            <kbd>↵</kbd>
-          </button>
-          <button class="command-item" data-action="export">
-            <span class="command-item-icon">📥</span>
-            <span>Export Restaurants as CSV</span>
-            <kbd>↵</kbd>
-          </button>
-          <button class="command-item" data-action="theme">
-            <span class="command-item-icon">🌓</span>
-            <span>Toggle Dark/Light Theme</span>
-            <kbd>↵</kbd>
-          </button>
-          <button class="command-item" data-action="toggleView">
-            <span class="command-item-icon">🔲</span>
-            <span>Switch Table/Card View</span>
-            <kbd>↵</kbd>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- Sidebar Navigation -->
   <nav class="sidebar" id="sidebar">
@@ -118,10 +49,6 @@
         <span class="sidebar-icon" id="themeIcon">🌙</span>
         <span class="sidebar-label">Theme</span>
       </button>
-      <button class="sidebar-link sidebar-action" id="btnCommandPalette" title="Command Palette (Ctrl+K)">
-        <span class="sidebar-icon">⌨️</span>
-        <span class="sidebar-label">Ctrl+K</span>
-      </button>
     </div>
   </nav>
 
@@ -136,10 +63,6 @@
         </div>
       </div>
       <div class="header-actions">
-        <div class="kbd-hint" id="kbdHint">
-          <kbd>Ctrl</kbd> + <kbd>K</kbd>
-          <span>Command Palette</span>
-        </div>
         <div class="auto-refresh-toggle">
           <label class="toggle-switch" title="Auto-refresh every 30s">
             <input type="checkbox" id="autoRefreshToggle">
@@ -507,7 +430,6 @@
       <p><strong>Advanced Big Data Analytics (ABDA)</strong></p>
       <p>Restaurant Discovery & Analytics System · Scala 3 · MongoDB Atlas</p>
       <p class="footer-shortcuts">
-        <kbd>Ctrl+K</kbd> Command Palette &nbsp;·&nbsp;
         <kbd>T</kbd> Toggle Theme &nbsp;·&nbsp;
         <kbd>R</kbd> Refresh Data
       </p>
