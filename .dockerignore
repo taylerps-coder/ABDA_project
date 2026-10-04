@@ -1,0 +1,30 @@
+# Environment variables & secrets
+.env
+.env.*
+
+# Git
+.git
+.gitignore
+
+# sbt build artifacts
+target/
+project/target/
+project/project/
+.bsp/
+.bloop/
+.metals/
+
+# IDE configurations
+.idea/
+.vscode/
+*.iml
+
+# Node / JS dependencies
+node_modules/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

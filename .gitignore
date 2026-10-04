@@ -1,0 +1,19 @@
+# Environment variables (DO NOT COMMIT REAL CREDENTIALS)
+.env
+
+# sbt and Scala build artifacts
+target/
+project/target/
+project/project/
+.bsp/
+.bloop/
+.metals/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.iml

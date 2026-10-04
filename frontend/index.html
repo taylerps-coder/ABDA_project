@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Discovery & Analytics — ABDA</title>
+  <meta name="description" content="Restaurant Discovery & Analytics System — A full-stack MongoDB Atlas analytics platform built with Scala 3 for Advanced Big Data Analytics.">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+</head>
+<body>
+
+  <!-- Particle Canvas Background -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- Top Notification Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Command Palette (Ctrl+K) -->
+  <div id="commandPalette" class="command-palette hidden">
+    <div class="command-palette-overlay"></div>
+    <div class="command-palette-modal">
+      <div class="command-palette-header">
+        <span class="command-icon">🔍</span>
+        <input type="text" id="commandInput" placeholder="Search restaurants, navigate sections, or type a command…" autocomplete="off">
+        <kbd>ESC</kbd>
+      </div>
+      <div class="command-palette-results" id="commandResults">
+        <div class="command-group">
+          <div class="command-group-title">Quick Navigation</div>
+          <button class="command-item" data-action="nav" data-target="sectionDashboard">
+            <span class="command-item-icon">📊</span>
+            <span>Go to Dashboard</span>
+            <kbd>↵</kbd>
+          </button>
+          <button class="command-item" data-action="nav" data-target="sectionSearch">
+            <span class="command-item-icon">🔍</span>
+            <span>Go to Search & Filter</span>
+            <kbd>↵</kbd>
+          </button>
+          <button class="command-item" data-action="nav" data-target="sectionRestaurants">
+            <span class="command-item-icon">🏪</span>
+            <span>Go to Restaurants</span>
+            <kbd>↵</kbd>
+          </button>
+          <button class="command-item" data-action="nav" data-target="sectionAdd">
+            <span class="command-item-icon">➕</span>
+            <span>Add New Restaurant</span>
+            <kbd>↵</kbd>
+          </button>
+          <button class="command-item" data-action="nav" data-target="sectionAnalytics">
+            <span class="command-item-icon">📈</span>
+            <span>Go to Analytics</span>
+            <kbd>↵</kbd>
+          </button>
+          <button class="command-item" data-action="nav" data-target="sectionIndexes">
+            <span class="command-item-icon">⚡</span>
+            <span>Go to Indexes</span>
+            <kbd>↵</kbd>
+          </button>
+        </div>
+        <div class="command-group">
+          <div class="command-group-title">Actions</div>
+          <button class="command-item" data-action="refresh">
+            <span class="command-item-icon">🔄</span>
+            <span>Refresh All Data</span>
+            <kbd>↵</kbd>
+          </button>
+          <button class="command-item" data-action="export">
+            <span class="command-item-icon">📥</span>
+            <span>Export Restaurants as CSV</span>
+            <kbd>↵</kbd>
+          </button>
+          <button class="command-item" data-action="theme">
+            <span class="command-item-icon">🌓</span>
+            <span>Toggle Dark/Light Theme</span>
+            <kbd>↵</kbd>
+          </button>
+          <button class="command-item" data-action="toggleView">
+            <span class="command-item-icon">🔲</span>
+            <span>Switch Table/Card View</span>
+            <kbd>↵</kbd>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Navigation -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+      <a href="#sectionDashboard" class="sidebar-link active" data-section="sectionDashboard" title="Dashboard">
+        <span class="sidebar-icon">📊</span>
+        <span class="sidebar-label">Dashboard</span>
+      </a>
+      <a href="#sectionSearch" class="sidebar-link" data-section="sectionSearch" title="Search">
+        <span class="sidebar-icon">🔍</span>
+        <span class="sidebar-label">Search</span>
+      </a>
+      <a href="#sectionRestaurants" class="sidebar-link" data-section="sectionRestaurants" title="Restaurants">
+        <span class="sidebar-icon">🏪</span>
+        <span class="sidebar-label">Restaurants</span>
+      </a>
+      <a href="#sectionAdd" class="sidebar-link" data-section="sectionAdd" title="Add">
+        <span class="sidebar-icon">➕</span>
+        <span class="sidebar-label">Add New</span>
+      </a>
+      <a href="#sectionAnalytics" class="sidebar-link" data-section="sectionAnalytics" title="Analytics">
+        <span class="sidebar-icon">📈</span>
+        <span class="sidebar-label">Analytics</span>
+      </a>
+      <a href="#sectionIndexes" class="sidebar-link" data-section="sectionIndexes" title="Indexes">
+        <span class="sidebar-icon">⚡</span>
+        <span class="sidebar-label">Indexes</span>
+      </a>
+      <div class="sidebar-spacer"></div>
+      <button class="sidebar-link sidebar-action" id="btnThemeToggle" title="Toggle Theme">
+        <span class="sidebar-icon" id="themeIcon">🌙</span>
+        <span class="sidebar-label">Theme</span>
+      </button>
+      <button class="sidebar-link sidebar-action" id="btnCommandPalette" title="Command Palette (Ctrl+K)">
+        <span class="sidebar-icon">⌨️</span>
+        <span class="sidebar-label">Ctrl+K</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="logo-icon">🍽️</div>
+        <div>
+          <h1>Restaurant Discovery & Analytics</h1>
+          <p class="subtitle">Advanced Big Data Analytics (ABDA) — Scala 3 · MongoDB Atlas</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="kbd-hint" id="kbdHint">
+          <kbd>Ctrl</kbd> + <kbd>K</kbd>
+          <span>Command Palette</span>
+        </div>
+        <div class="auto-refresh-toggle">
+          <label class="toggle-switch" title="Auto-refresh every 30s">
+            <input type="checkbox" id="autoRefreshToggle">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="autoRefreshLabel">Auto-refresh</span>
+        </div>
+        <div id="connectionStatus" class="status-badge checking">
+          <span class="dot"></span>
+          <span id="statusText">Checking Atlas Connection…</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- CONNECTION NOTICE (shown if Atlas is offline) -->
+    <div id="connectionAlert" class="alert-box warning hidden">
+      <strong>⚠️ MongoDB Atlas Connection Notice:</strong>
+      <span id="connectionAlertMsg"></span>
+      <p class="alert-sub">Make sure you have added your connection string in <code>.env</code> as <code>MONGODB_URI=mongodb+srv://…</code> and whitelisted your IP in Atlas Network Access.</p>
+    </div>
+
+    <!-- DASHBOARD SECTION -->
+    <section class="section" id="sectionDashboard">
+      <h2 class="section-title">Dashboard Overview</h2>
+      <div class="stats-grid">
+        <div class="stat-card" data-tilt>
+          <div class="stat-icon blue">🏪</div>
+          <div class="stat-data">
+            <span class="stat-label">Total Restaurants</span>
+            <span id="statRestaurants" class="stat-value">—</span>
+          </div>
+        </div>
+        <div class="stat-card" data-tilt>
+          <div class="stat-icon purple">🍜</div>
+          <div class="stat-data">
+            <span class="stat-label">Total Cuisines</span>
+            <span id="statCuisines" class="stat-value">—</span>
+          </div>
+        </div>
+        <div class="stat-card" data-tilt>
+          <div class="stat-icon green">📍</div>
+          <div class="stat-data">
+            <span class="stat-label">Total Boroughs</span>
+            <span id="statBoroughs" class="stat-value">—</span>
+          </div>
+        </div>
+        <div class="stat-card" data-tilt>
+          <div class="stat-icon orange">⭐</div>
+          <div class="stat-data">
+            <span class="stat-label">Average Score</span>
+            <span id="statAvgScore" class="stat-value">—</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEARCH & FILTER SECTION -->
+    <section class="section" id="sectionSearch">
+      <div class="section-header">
+        <h2 class="section-title">Search & Filter</h2>
+        <span class="section-hint">Query MongoDB Atlas directly with multiple criteria</span>
+      </div>
+      <form id="searchForm" class="search-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="searchName">Restaurant Name</label>
+            <input type="text" id="searchName" placeholder="e.g. Shake Shack">
+          </div>
+          <div class="form-group">
+            <label for="searchCuisine">Cuisine</label>
+            <input type="text" id="searchCuisine" placeholder="e.g. American, Italian">
+          </div>
+          <div class="form-group">
+            <label for="searchBorough">Borough</label>
+            <select id="searchBorough">
+              <option value="">All Boroughs</option>
+              <option value="Manhattan">Manhattan</option>
+              <option value="Brooklyn">Brooklyn</option>
+              <option value="Queens">Queens</option>
+              <option value="Bronx">Bronx</option>
+              <option value="Staten Island">Staten Island</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="searchZipcode">ZIP Code</label>
+            <input type="text" id="searchZipcode" placeholder="e.g. 10001">
+          </div>
+          <div class="form-group">
+            <label for="searchMinScore">Minimum Score</label>
+            <input type="number" id="searchMinScore" placeholder="e.g. 10" min="0" step="1">
+          </div>
+        </div>
+        <div class="btn-group">
+          <button type="submit" class="btn btn-primary" id="btnSearch">🔍 Search</button>
+          <button type="button" class="btn btn-secondary" id="btnClearSearch">Clear</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- RESTAURANTS TABLE (CRUD READ & ACTIONS) -->
+    <section class="section" id="sectionRestaurants">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Restaurants</h2>
+          <span id="resultCount" class="result-count">Loading restaurants…</span>
+        </div>
+        <div class="section-toolbar">
+          <div class="view-toggle" id="viewToggle">
+            <button class="view-btn active" data-view="table" title="Table View">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="3" rx="0.5" fill="currentColor" opacity="0.4"/><rect x="1" y="6" width="14" height="3" rx="0.5" fill="currentColor" opacity="0.6"/><rect x="1" y="11" width="14" height="3" rx="0.5" fill="currentColor"/></svg>
+            </button>
+            <button class="view-btn" data-view="card" title="Card View">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/><rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.4"/><rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/></svg>
+            </button>
+          </div>
+          <button class="btn btn-outline btn-sm" id="btnExportCSV" title="Export as CSV">📥 Export CSV</button>
+          <button class="btn btn-outline" id="btnRefresh">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div class="table-wrapper" id="tableView">
+        <table class="data-table" id="restaurantsTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Cuisine</th>
+              <th>Borough</th>
+              <th>ZIP</th>
+              <th>Score</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="restaurantsTableBody">
+            <tr>
+              <td colspan="6" class="text-center">
+                <div class="skeleton-row"><div class="skeleton-line"></div></div>
+                <div class="skeleton-row"><div class="skeleton-line"></div></div>
+                <div class="skeleton-row"><div class="skeleton-line"></div></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Card View (hidden by default) -->
+      <div class="card-grid hidden" id="cardView"></div>
+    </section>
+
+    <!-- ADD RESTAURANT SECTION (CRUD CREATE) -->
+    <section class="section" id="sectionAdd">
+      <div class="section-header">
+        <h2 class="section-title">Add Restaurant</h2>
+        <span class="section-hint">Insert a new restaurant record into MongoDB Atlas</span>
+      </div>
+      <form id="addRestaurantForm" class="add-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="addName">Name *</label>
+            <input type="text" id="addName" required placeholder="e.g. ABDA Demo Restaurant">
+          </div>
+          <div class="form-group">
+            <label for="addCuisine">Cuisine *</label>
+            <input type="text" id="addCuisine" required placeholder="e.g. Indian">
+          </div>
+          <div class="form-group">
+            <label for="addBorough">Borough *</label>
+            <select id="addBorough" required>
+              <option value="">Select Borough</option>
+              <option value="Manhattan">Manhattan</option>
+              <option value="Brooklyn">Brooklyn</option>
+              <option value="Queens">Queens</option>
+              <option value="Bronx">Bronx</option>
+              <option value="Staten Island">Staten Island</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="addZipcode">ZIP Code</label>
+            <input type="text" id="addZipcode" placeholder="e.g. 10001">
+          </div>
+          <div class="form-group">
+            <label for="addScore">Score</label>
+            <input type="number" id="addScore" value="12" min="0" step="1">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-success" id="btnAddRestaurant">➕ Add Restaurant</button>
+      </form>
+    </section>
+
+    <!-- ANALYTICS SECTION (3 AGGREGATIONS + CHARTS) -->
+    <section class="section" id="sectionAnalytics">
+      <div class="section-header">
+        <h2 class="section-title">MongoDB Aggregation Analytics</h2>
+        <span class="section-hint">High-performance aggregation pipelines computed inside MongoDB Atlas</span>
+      </div>
+
+      <!-- Interactive Charts Row -->
+      <div class="charts-row">
+        <div class="chart-container">
+          <h3 class="chart-title">🏆 Top Cuisines Distribution</h3>
+          <canvas id="cuisineChart" width="400" height="250"></canvas>
+        </div>
+        <div class="chart-container">
+          <h3 class="chart-title">📍 Borough Distribution</h3>
+          <canvas id="boroughChart" width="400" height="250"></canvas>
+        </div>
+      </div>
+
+      <div class="analytics-grid">
+        <!-- Aggregation 1: By Cuisine -->
+        <div class="analytics-card">
+          <h3>Restaurants by Cuisine</h3>
+          <p class="analytics-desc">Top 10 cuisines aggregated with <code>$group</code> & <code>$sort</code></p>
+          <div class="table-wrapper">
+            <table class="data-table compact" id="tableCuisine">
+              <thead>
+                <tr>
+                  <th>Cuisine</th>
+                  <th class="text-right">Count</th>
+                  <th class="text-right" style="width: 120px;">Share</th>
+                </tr>
+              </thead>
+              <tbody id="cuisineBody">
+                <tr><td colspan="3" class="text-center">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Aggregation 2: By Borough -->
+        <div class="analytics-card">
+          <h3>Restaurants by Borough</h3>
+          <p class="analytics-desc">Distribution across boroughs aggregated with <code>$group</code></p>
+          <div class="table-wrapper">
+            <table class="data-table compact" id="tableBorough">
+              <thead>
+                <tr>
+                  <th>Borough</th>
+                  <th class="text-right">Count</th>
+                  <th class="text-right" style="width: 120px;">Share</th>
+                </tr>
+              </thead>
+              <tbody id="boroughBody">
+                <tr><td colspan="3" class="text-center">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Aggregation 3: Average Score by Cuisine -->
+        <div class="analytics-card full-width">
+          <h3>Average Inspection Score by Cuisine</h3>
+          <p class="analytics-desc">Calculated via <code>$unwind: "$grades"</code> and <code>$avg: "$grades.score"</code></p>
+          <div class="table-wrapper">
+            <table class="data-table compact" id="tableAvgScore">
+              <thead>
+                <tr>
+                  <th>Cuisine</th>
+                  <th>Average Score</th>
+                  <th class="text-right">Total Inspected</th>
+                </tr>
+              </thead>
+              <tbody id="avgScoreBody">
+                <tr><td colspan="3" class="text-center">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INDEXES SECTION -->
+    <section class="section" id="sectionIndexes">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">MongoDB Atlas Indexes</h2>
+          <span class="section-hint">Ensures efficient B-Tree search performance for high-traffic queries</span>
+        </div>
+        <button class="btn btn-primary" id="btnCreateIndexes">⚡ Create Required Indexes</button>
+      </div>
+
+      <div class="indexes-grid">
+        <div class="index-card">
+          <div class="index-badge">Single Field</div>
+          <h4>name_1</h4>
+          <p>Index on <code>name</code> field for fast restaurant title lookups.</p>
+          <span class="index-status" id="statusIndexName">Status: Checking…</span>
+        </div>
+        <div class="index-card">
+          <div class="index-badge">Single Field</div>
+          <h4>cuisine_1</h4>
+          <p>Index on <code>cuisine</code> field for cuisine-based filter speedup.</p>
+          <span class="index-status" id="statusIndexCuisine">Status: Checking…</span>
+        </div>
+        <div class="index-card highlight">
+          <div class="index-badge compound">Compound Index</div>
+          <h4>borough_1_cuisine_1</h4>
+          <p>Multi-field index on <code>borough + cuisine</code> for combined filters.</p>
+          <span class="index-status" id="statusIndexCompound">Status: Checking…</span>
+        </div>
+      </div>
+
+      <div class="all-indexes-box">
+        <strong>All Collection Indexes:</strong>
+        <code id="allIndexesText">Loading indexes…</code>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- EDIT RESTAURANT MODAL (CRUD UPDATE) -->
+  <div id="editModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Restaurant</h3>
+        <button class="close-modal" id="btnCloseEdit">&times;</button>
+      </div>
+      <form id="editRestaurantForm">
+        <input type="hidden" id="editId">
+        <div class="form-group">
+          <label for="editName">Restaurant Name *</label>
+          <input type="text" id="editName" required>
+        </div>
+        <div class="form-group" style="margin-top: 0.75rem;">
+          <label for="editCuisine">Cuisine *</label>
+          <input type="text" id="editCuisine" required>
+        </div>
+        <div class="form-group" style="margin-top: 0.75rem;">
+          <label for="editBorough">Borough *</label>
+          <select id="editBorough" required>
+            <option value="Manhattan">Manhattan</option>
+            <option value="Brooklyn">Brooklyn</option>
+            <option value="Queens">Queens</option>
+            <option value="Bronx">Bronx</option>
+            <option value="Staten Island">Staten Island</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 0.75rem;">
+          <label for="editZipcode">ZIP Code</label>
+          <input type="text" id="editZipcode">
+        </div>
+        <div class="form-group" style="margin-top: 0.75rem;">
+          <label for="editScore">Score</label>
+          <input type="number" id="editScore" min="0" step="1">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="btnCancelEdit">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveEdit">💾 Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scroll to Top -->
+  <button class="scroll-top-btn hidden" id="scrollTopBtn" title="Back to top">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-container">
+      <p><strong>Advanced Big Data Analytics (ABDA)</strong></p>
+      <p>Restaurant Discovery & Analytics System · Scala 3 · MongoDB Atlas</p>
+      <p class="footer-shortcuts">
+        <kbd>Ctrl+K</kbd> Command Palette &nbsp;·&nbsp;
+        <kbd>T</kbd> Toggle Theme &nbsp;·&nbsp;
+        <kbd>R</kbd> Refresh Data
+      </p>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: restaurant-discovery
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: MONGODB_URI
+        sync: false
