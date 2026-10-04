@@ -7,7 +7,7 @@
 let currentRestaurants = [];
 let lastCuisineData = null;
 let lastBoroughData = null;
-let currentTheme = localStorage.getItem("abda_theme") || "dark";
+let currentTheme = localStorage.getItem("abda_theme") || "light";
 let autoRefreshTimer = null;
 
 // DOM Elements
@@ -550,34 +550,39 @@ function drawCuisineChart(data) {
   const gap = 16;
   const labelWidth = 100;
   const maxBarWidth = width - labelWidth - 70;
+  const isLight = document.documentElement.getAttribute("data-theme") !== "dark";
 
   topItems.forEach((item, idx) => {
     const y = startY + idx * (barHeight + gap);
     const count = Number(item.count);
-    const barWidth = Math.max((count / maxVal) * maxBarWidth, 14);
+    const barWidth = Math.max((count / maxVal) * maxBarWidth, 16);
 
     // Label
-    ctx.fillStyle = document.documentElement.getAttribute("data-theme") === "light" ? "#334155" : "#cbd5e1";
+    ctx.fillStyle = isLight ? "#112920" : "#e6f4ee";
     ctx.font = "600 13px 'Plus Jakarta Sans', sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(item.cuisine, 8, y + barHeight / 2);
 
     // Background track
-    ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
+    ctx.fillStyle = isLight ? "rgba(17, 66, 50, 0.06)" : "rgba(255, 255, 255, 0.06)";
     ctx.beginPath();
     ctx.roundRect(labelWidth, y, maxBarWidth, barHeight, 6);
     ctx.fill();
 
-    // Vibrant Aurora Gradient Bar
+    // Forest Green to Sprout Lime Gradient Bar
     const grad = ctx.createLinearGradient(labelWidth, 0, labelWidth + barWidth, 0);
-    grad.addColorStop(0, "#ec4899");
-    grad.addColorStop(0.5, "#a855f7");
-    grad.addColorStop(1, "#06b6d4");
+    if (isLight) {
+      grad.addColorStop(0, "#114232");
+      grad.addColorStop(1, "#84cc16");
+    } else {
+      grad.addColorStop(0, "#22c55e");
+      grad.addColorStop(1, "#bbf451");
+    }
 
     ctx.save();
-    ctx.shadowColor = "rgba(168, 85, 247, 0.5)";
-    ctx.shadowBlur = 10;
+    ctx.shadowColor = isLight ? "rgba(17, 66, 50, 0.2)" : "rgba(187, 244, 81, 0.4)";
+    ctx.shadowBlur = 8;
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.roundRect(labelWidth, y, barWidth, barHeight, 6);
@@ -585,7 +590,7 @@ function drawCuisineChart(data) {
     ctx.restore();
 
     // Count pill text
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = isLight ? "#114232" : "#ffffff";
     ctx.font = "700 12px 'JetBrains Mono', monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
@@ -605,12 +610,19 @@ function drawBoroughChart(data) {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, width, height);
 
-  const colors = {
-    "Manhattan": "#ec4899",
-    "Brooklyn": "#06b6d4",
-    "Queens": "#10b981",
+  const isLight = document.documentElement.getAttribute("data-theme") !== "dark";
+  const colors = isLight ? {
+    "Manhattan": "#114232",
+    "Brooklyn": "#84cc16",
+    "Queens": "#059669",
+    "Staten Island": "#d97706",
+    "Bronx": "#7c3aed"
+  } : {
+    "Manhattan": "#4ade80",
+    "Brooklyn": "#bbf451",
+    "Queens": "#34d399",
     "Staten Island": "#f59e0b",
-    "Bronx": "#a855f7"
+    "Bronx": "#c084fc"
   };
 
   const total = data.reduce((acc, d) => acc + Number(d.count), 0) || 1;
@@ -624,11 +636,11 @@ function drawBoroughChart(data) {
   data.forEach((item) => {
     const count = Number(item.count);
     const sliceAngle = (count / total) * (Math.PI * 2);
-    const color = colors[item.borough] || "#6366f1";
+    const color = colors[item.borough] || "#114232";
 
     ctx.save();
     ctx.shadowColor = color;
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
     ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
@@ -641,13 +653,13 @@ function drawBoroughChart(data) {
   });
 
   // Center text
-  ctx.fillStyle = document.documentElement.getAttribute("data-theme") === "light" ? "#0f172a" : "#ffffff";
+  ctx.fillStyle = isLight ? "#112920" : "#ffffff";
   ctx.font = "800 14px 'Outfit', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("NYC", centerX, centerY - 7);
   ctx.font = "600 11px 'JetBrains Mono', monospace";
-  ctx.fillStyle = "#94a3b8";
+  ctx.fillStyle = isLight ? "#486156" : "#94a3b8";
   ctx.fillText(total.toLocaleString(), centerX, centerY + 9);
 
   // Legend
@@ -657,13 +669,13 @@ function drawBoroughChart(data) {
 
   data.forEach((item, idx) => {
     const y = startLegendY + idx * legendGap;
-    const color = colors[item.borough] || "#6366f1";
+    const color = colors[item.borough] || "#114232";
     const percent = Math.round((Number(item.count) / total) * 100);
 
     // Indicator dot
     ctx.save();
     ctx.shadowColor = color;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 6;
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(legendX, y, 6, 0, Math.PI * 2);
@@ -671,14 +683,14 @@ function drawBoroughChart(data) {
     ctx.restore();
 
     // Label
-    ctx.fillStyle = document.documentElement.getAttribute("data-theme") === "light" ? "#1e293b" : "#f1f5f9";
+    ctx.fillStyle = isLight ? "#112920" : "#f1f5f9";
     ctx.font = "700 12px 'Plus Jakarta Sans', sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(item.borough, legendX + 14, y - 4);
 
     // Subtext
-    ctx.fillStyle = "#94a3b8";
+    ctx.fillStyle = isLight ? "#748c81" : "#94a3b8";
     ctx.font = "500 11px 'JetBrains Mono', monospace";
     ctx.fillText(`${Number(item.count).toLocaleString()} (${percent}%)`, legendX + 14, y + 10);
   });
@@ -771,7 +783,7 @@ function applyTheme(theme) {
 
 function toggleTheme() {
   applyTheme(currentTheme === "dark" ? "light" : "dark");
-  showToast(`Switched to ${currentTheme === "dark" ? "Dark Nebula" : "Iridescent Light"} mode 🎨`, "success");
+  showToast(`Switched to ${currentTheme === "dark" ? "Nocturnal Forest" : "Organic Cream & Forest"} theme 🌿`, "success");
 }
 
 const btnThemeToggle = document.getElementById("btnThemeToggle");

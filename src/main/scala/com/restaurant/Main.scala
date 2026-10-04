@@ -21,7 +21,15 @@ object Main extends cask.MainRoutes {
       val path = Paths.get("frontend", fileName)
       if (Files.exists(path)) {
         val content = new String(Files.readAllBytes(path), "UTF-8")
-        cask.Response(content, headers = Seq("Content-Type" -> contentType))
+        cask.Response(
+          content,
+          headers = Seq(
+            "Content-Type" -> contentType,
+            "Cache-Control" -> "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma" -> "no-cache",
+            "Expires" -> "0"
+          )
+        )
       } else {
         cask.Response(s"File $fileName not found", statusCode = 404)
       }
@@ -32,17 +40,22 @@ object Main extends cask.MainRoutes {
   // STATIC FRONTEND ROUTES (One command -> One application)
   // ==========================================================================
   @cask.get("/")
-  def index(): cask.Response[String] = {
+  def index(v: String = ""): cask.Response[String] = {
     readFrontendFile("index.html", "text/html; charset=utf-8")
   }
 
   @cask.get("/style.css")
-  def style(): cask.Response[String] = {
+  def style(v: String = ""): cask.Response[String] = {
+    readFrontendFile("style.css", "text/css; charset=utf-8")
+  }
+
+  @cask.get("/theme.css")
+  def themeCss(v: String = ""): cask.Response[String] = {
     readFrontendFile("style.css", "text/css; charset=utf-8")
   }
 
   @cask.get("/app.js")
-  def appJs(): cask.Response[String] = {
+  def appJs(v: String = ""): cask.Response[String] = {
     readFrontendFile("app.js", "application/javascript; charset=utf-8")
   }
 
