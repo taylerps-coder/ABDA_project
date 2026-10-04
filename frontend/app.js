@@ -21,7 +21,12 @@ const searchForm = document.getElementById("searchForm");
 const btnClearSearch = document.getElementById("btnClearSearch");
 const resultCount = document.getElementById("resultCount");
 const restaurantsTableBody = document.getElementById("restaurantsTableBody");
+const tableView = document.getElementById("tableView");
+const cardView = document.getElementById("cardView");
+const viewToggle = document.getElementById("viewToggle");
+const btnExportCSV = document.getElementById("btnExportCSV");
 const btnRefresh = document.getElementById("btnRefresh");
+let currentView = localStorage.getItem("restaurantView") || "table";
 
 const addRestaurantForm = document.getElementById("addRestaurantForm");
 
@@ -132,6 +137,7 @@ async function loadDashboard() {
 // ============================================================================
 async function loadRestaurants(queryParams = "") {
   restaurantsTableBody.innerHTML = `<tr><td colspan="6" class="text-center">Loading restaurants from MongoDB Atlas…</td></tr>`;
+  if (cardView) cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-secondary);">Loading restaurants from MongoDB Atlas…</div>`;
   resultCount.textContent = "Loading…";
 
   try {
@@ -143,6 +149,7 @@ async function loadRestaurants(queryParams = "") {
     renderRestaurantsTable(data);
   } catch (err) {
     restaurantsTableBody.innerHTML = `<tr><td colspan="6" class="text-center" style="color: var(--accent-rose);">Failed to load restaurants: ${err.message}</td></tr>`;
+    if (cardView) cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--accent-rose);">Failed to load restaurants: ${err.message}</div>`;
     resultCount.textContent = "0 restaurants";
   }
 }
@@ -152,9 +159,13 @@ function renderRestaurantsTable(list) {
 
   if (!list || list.length === 0) {
     restaurantsTableBody.innerHTML = `<tr><td colspan="6" class="text-center">No restaurants found matching your criteria.</td></tr>`;
+    if (cardView) {
+      cardView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-secondary); background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-medium);">No restaurants found matching your criteria.</div>`;
+    }
     return;
   }
 
+  // Render Table View Rows
   restaurantsTableBody.innerHTML = list.map((r, index) => `
     <tr style="animation: fadeInUp 0.3s ease-out ${index * 0.02}s both;">
       <td><strong>${escapeHtml(r.name)}</strong></td>
@@ -170,6 +181,110 @@ function renderRestaurantsTable(list) {
       </td>
     </tr>
   `).join("");
+
+  // Render Card Grid View
+  if (cardView) {
+    cardView.innerHTML = list.map((r, index) => `
+      <div class="restaurant-card" style="animation: fadeInUp 0.3s ease-out ${index * 0.02}s both;">
+        <div class="restaurant-card-name">${escapeHtml(r.name)}</div>
+        <div class="restaurant-card-meta">
+          <span class="badge badge-cuisine">${escapeHtml(r.cuisine)}</span>
+          <span class="badge badge-borough">${escapeHtml(r.borough)}</span>
+          <span class="score-pill">⭐ ${r.score ? r.score.toFixed(1) : "0.0"}</span>
+        </div>
+        <div class="restaurant-card-detail">
+          <span class="label">ZIP:</span>
+          <span>${escapeHtml(r.zipcode || "N/A")}</span>
+        </div>
+        ${(r.street || r.building) ? `
+        <div class="restaurant-card-detail">
+          <span class="label">Addr:</span>
+          <span>${escapeHtml((r.building ? r.building + ' ' : '') + (r.street || ''))}</span>
+        </div>` : ''}
+        <div class="restaurant-card-actions">
+          <button class="btn btn-secondary btn-sm" onclick="openEditModal('${r.id}')">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteRestaurant('${r.id}', '${escapeQuotes(r.name)}')">🗑️ Delete</button>
+        </div>
+      </div>
+    `).join("");
+  }
+}
+
+// View Switcher (Table / Card)
+function setRestaurantView(view) {
+  currentView = view;
+  localStorage.setItem("restaurantView", view);
+
+  if (viewToggle) {
+    const btns = viewToggle.querySelectorAll(".view-btn");
+    btns.forEach(b => {
+      if (b.getAttribute("data-view") === view) {
+        b.classList.add("active");
+      } else {
+        b.classList.remove("active");
+      }
+    });
+  }
+
+  if (view === "card") {
+    if (tableView) tableView.classList.add("hidden");
+    if (cardView) cardView.classList.remove("hidden");
+  } else {
+    if (tableView) tableView.classList.remove("hidden");
+    if (cardView) cardView.classList.add("hidden");
+  }
+}
+
+if (viewToggle) {
+  viewToggle.querySelectorAll(".view-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const targetView = btn.getAttribute("data-view");
+      if (targetView) setRestaurantView(targetView);
+    });
+  });
+}
+
+// Export CSV handler
+if (btnExportCSV) {
+  btnExportCSV.addEventListener("click", exportRestaurantsToCSV);
+}
+
+function exportRestaurantsToCSV() {
+  if (!currentRestaurants || currentRestaurants.length === 0) {
+    showToast("No restaurant data available to export.", "error");
+    return;
+  }
+
+  const escapeCSV = (val) => {
+    if (val === null || val === undefined) return '""';
+    return `"${String(val).replace(/"/g, '""')}"`;
+  };
+
+  const headers = ["ID", "Name", "Cuisine", "Borough", "ZIP Code", "Building", "Street", "Score"];
+  const rows = currentRestaurants.map(r => [
+    escapeCSV(r.id),
+    escapeCSV(r.name),
+    escapeCSV(r.cuisine),
+    escapeCSV(r.borough),
+    escapeCSV(r.zipcode),
+    escapeCSV(r.building),
+    escapeCSV(r.street),
+    r.score !== undefined && r.score !== null ? r.score : "0.0"
+  ]);
+
+  const csvContent = [headers.join(","), ...rows.map(row => row.join(","))].join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const timestamp = new Date().toISOString().slice(0, 10);
+  a.download = `restaurants_export_${timestamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast(`Successfully exported ${currentRestaurants.length} restaurants to CSV!`, "success");
 }
 
 // Search form submit
@@ -475,6 +590,7 @@ function escapeQuotes(str) {
 // Initialization
 // ============================================================================
 document.addEventListener("DOMContentLoaded", () => {
+  setRestaurantView(currentView);
   checkHealth();
   loadDashboard();
   loadRestaurants();
