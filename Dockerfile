@@ -31,9 +31,9 @@ COPY --from=builder /app/target/scala-3.3.3/Restaurant-Discovery-assembly-1.0.0.
 # Copy frontend static assets (served by Cask backend)
 COPY frontend ./frontend
 
-# Default port for Render web service
-ENV PORT=10000
-EXPOSE 10000
+# Default port
+ENV PORT=8080
+EXPOSE 8080
 
 # Run application using Java directly (fast startup, low memory footprint)
 CMD ["java", "-jar", "app.jar"]
